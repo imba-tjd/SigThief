@@ -6,7 +6,7 @@ import sys
 import struct
 import shutil
 import io
-from optparse import OptionParser
+import argparse
 
 
 def gather_file_info_win(binary):
@@ -118,16 +118,15 @@ def copyCert(exe):
 
 def writeCert(cert, exe, output):
     flItms = gather_file_info_win(exe)
-    
-    if not output: 
-        output = output = str(exe) + "_signed"
+
+    if not output:
+        output = str(exe) + "_signed"
 
     shutil.copy2(exe, output)
-    
+
     print("Output file: {0}".format(output))
 
-    with open(exe, 'rb') as g:
-        with open(output, 'wb') as f:
+    with open(exe, 'rb') as g, open(output, 'wb') as f:
             f.write(g.read())
             f.seek(0)
             f.seek(flItms['CertTableLOC'], 0)
@@ -153,7 +152,7 @@ def outputCert(exe, output):
 
 def check_sig(exe):
     flItms = gather_file_info_win(exe)
- 
+
     if flItms['CertLOC'] == 0 or flItms['CertSize'] == 0:
         # not signed
         print("Inputfile Not signed!")
@@ -163,7 +162,7 @@ def check_sig(exe):
 
 def truncate(exe, output):
     flItms = gather_file_info_win(exe)
- 
+
     if flItms['CertLOC'] == 0 or flItms['CertSize'] == 0:
         # not signed
         print("Inputfile Not signed!")
@@ -190,18 +189,17 @@ def truncate(exe, output):
 
 def signfile(exe, sigfile, output):
     flItms = gather_file_info_win(exe)
-    
+
     cert = open(sigfile, 'rb').read()
 
-    if not output: 
-        output = output = str(exe) + "_signed"
+    if not output:
+        output = str(exe) + "_signed"
 
     shutil.copy2(exe, output)
-    
+
     print("Output file: {0}".format(output))
-    
-    with open(exe, 'rb') as g:
-        with open(output, 'wb') as f:
+
+    with open(exe, 'rb') as g, open(output, 'wb') as f:
             f.write(g.read())
             f.seek(0)
             f.seek(flItms['CertTableLOC'], 0)
@@ -213,57 +211,46 @@ def signfile(exe, sigfile, output):
 
 
 if __name__ == "__main__":
-    usage = 'usage: %prog [options]'
-    print("\n\n!! New Version available now for Dev Tier Sponsors! Sponsor here: https://github.com/sponsors/secretsquirrel\n\n")
-    parser = OptionParser()
-    parser.add_option("-i", "--file", dest="inputfile", 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--file", dest="inputfile",
                   help="input file", metavar="FILE")
-    parser.add_option('-r', '--rip', dest='ripsig', action='store_true',
+    parser.add_argument('-r', '--rip', dest='ripsig', action='store_true',
                   help='rip signature off inputfile')
-    parser.add_option('-a', '--add', dest='addsig', action='store_true',
+    parser.add_argument('-a', '--add', dest='addsig', action='store_true',
                   help='add signautre to targetfile')
-    parser.add_option('-o', '--output', dest='outputfile',
+    parser.add_argument('-o', '--output', dest='outputfile',
                   help='output file')
-    parser.add_option('-s', '--sig', dest='sigfile',
+    parser.add_argument('-s', '--sig', dest='sigfile',
                   help='binary signature from disk')
-    parser.add_option('-t', '--target', dest='targetfile',
+    parser.add_argument('-t', '--target', dest='targetfile',
                   help='file to append signature to')
-    parser.add_option('-c', '--checksig', dest='checksig', action='store_true',
+    parser.add_argument('-c', '--checksig', dest='checksig', action='store_true',
                   help='file to check if signed; does not verify signature')
-    parser.add_option('-T', '--truncate', dest="truncate", action='store_true',
+    parser.add_argument('-T', '--truncate', dest="truncate", action='store_true',
                   help='truncate signature (i.e. remove sig)')
-    (options, args) = parser.parse_args()
-    
+    options = parser.parse_args()
+
     # rip signature
     # inputfile and rip to outputfile
     if options.inputfile and options.ripsig:
         print("Ripping signature to file!")
         outputCert(options.inputfile, options.outputfile)
-        sys.exit()    
 
     # copy from one to another
-    # inputfile and rip to targetfile to outputfile    
-    if options.inputfile and options.targetfile:
+    # inputfile and rip to targetfile to outputfile
+    elif options.inputfile and options.targetfile:
         cert = copyCert(options.inputfile)
         writeCert(cert, options.targetfile, options.outputfile)
-        sys.exit()
 
     # check signature
-    # inputfile 
-    if options.inputfile and options.checksig:
-        check_sig(options.inputfile) 
-        sys.exit()
+    # inputfile
+    elif options.inputfile and options.checksig:
+        check_sig(options.inputfile)
 
     # add sig to target file
-    if options.targetfile and options.sigfile:
+    elif options.targetfile and options.sigfile:
         signfile(options.targetfile, options.sigfile, options.outputfile)
-        sys.exit()
-        
+
     # truncate
-    if options.inputfile and options.truncate:
+    elif options.inputfile and options.truncate:
         truncate(options.inputfile, options.outputfile)
-        sys.exit()
-
-    parser.print_help()
-    parser.error("You must do something!")
-
